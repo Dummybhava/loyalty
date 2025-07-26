@@ -24,6 +24,7 @@ import {
   Trophy
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import AdminProgramForm from "@/components/AdminProgramForm";
 import type { LoyaltyProgram, Reward } from "@shared/schema";
 
 interface LoyaltyStats {
@@ -38,12 +39,24 @@ export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // For development testing - bypass full authentication requirement
+  const isDevMode = true;
+  
   const [newProgram, setNewProgram] = useState({
     name: "",
     type: "points",
     pointsPerDollar: 10,
     cashBackPercent: 0,
     minimumPurchase: 0,
+    description: "",
+    isActive: true,
+    constraints: {
+      multipleRedemptions: true,
+      maxRedemptionsPerCustomer: 0,
+      validFrom: "",
+      validTo: "",
+      eligibilityRules: "",
+    }
   });
 
   const [newReward, setNewReward] = useState({
@@ -55,18 +68,42 @@ export default function Admin() {
     discountPercent: 0,
   });
 
-  // Fetch data
-  const { data: stats } = useQuery<LoyaltyStats>({
-    queryKey: ["/api/admin/stats"],
-  });
+  // Mock data for development - replace with actual API calls when authentication is set up
+  const stats = {
+    totalMembers: 1250,
+    totalPointsIssued: 45678,
+    totalRedemptions: 567,
+    revenueImpact: 12500
+  };
 
-  const { data: programs = [] } = useQuery<LoyaltyProgram[]>({
-    queryKey: ["/api/admin/programs"],
-  });
+  const programs = [
+    {
+      id: 1,
+      name: "StyleRewards Premium",
+      type: "points" as const,
+      pointsPerDollar: 10,
+      cashBackPercent: 0,
+      minimumPurchase: "50",
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ];
 
-  const { data: rewards = [] } = useQuery<Reward[]>({
-    queryKey: ["/api/admin/rewards"],
-  });
+  const rewards = [
+    {
+      id: 1,
+      name: "$10 Off Your Next Purchase",
+      description: "Get $10 off any order over $50",
+      type: "discount" as const,
+      pointCost: 1000,
+      discountAmount: 10,
+      discountPercent: 0,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ];
 
   // Mutations
   const createProgramMutation = useMutation({
@@ -82,6 +119,15 @@ export default function Admin() {
         pointsPerDollar: 10,
         cashBackPercent: 0,
         minimumPurchase: 0,
+        description: "",
+        isActive: true,
+        constraints: {
+          multipleRedemptions: true,
+          maxRedemptionsPerCustomer: 0,
+          validFrom: "",
+          validTo: "",
+          eligibilityRules: "",
+        }
       });
     },
     onError: (error) => {
@@ -296,6 +342,9 @@ export default function Admin() {
               </TabsList>
 
               <TabsContent value="programs" className="space-y-6">
+                {/* Comprehensive Program Creation Form */}
+                <AdminProgramForm />
+                
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Create Program */}
                   <Card>
@@ -306,105 +355,202 @@ export default function Admin() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <form onSubmit={handleCreateProgram} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Program Type</Label>
+                      <form onSubmit={handleCreateProgram} className="space-y-6">
+                        {/* Basic Information */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
+                          
+                          <div>
+                            <Label htmlFor="programName">Campaign Name</Label>
+                            <Input 
+                              id="programName"
+                              type="text" 
+                              placeholder="e.g., StyleRewards Premium"
+                              value={newProgram.name}
+                              onChange={(e) => setNewProgram({ ...newProgram, name: e.target.value })}
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="description">Description</Label>
+                            <Textarea 
+                              id="description"
+                              placeholder="Enter program description..."
+                              value={newProgram.description}
+                              onChange={(e) => setNewProgram({ ...newProgram, description: e.target.value })}
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Redemption Configuration */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-medium text-gray-900">Redemption</h3>
+                          <p className="text-sm text-gray-600">How customers redeem rewards</p>
+                          
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <label className="flex items-center p-3 cursor-pointer">
+                              <input 
+                                type="radio" 
+                                name="rewardType" 
+                                value="fixedAmount" 
+                                checked={newProgram.type === "fixedAmount"}
+                                onChange={(e) => setNewProgram({ ...newProgram, type: e.target.value })}
+                                className="text-primary mr-3" 
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">Fixed amount</div>
+                                <div className="text-sm text-gray-600">Set discount amount</div>
+                                {newProgram.type === "fixedAmount" && (
+                                  <div className="mt-2">
+                                    <Input 
+                                      type="number" 
+                                      placeholder="10"
+                                      min="1"
+                                      value={newProgram.pointsPerDollar}
+                                      onChange={(e) => setNewProgram({ ...newProgram, pointsPerDollar: Number(e.target.value) })}
+                                      className="w-24"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                              <input 
+                                type="radio" 
+                                name="rewardType" 
+                                value="percentage" 
+                                checked={newProgram.type === "percentage"}
+                                onChange={(e) => setNewProgram({ ...newProgram, type: e.target.value })}
+                                className="text-primary mr-3" 
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">Percentage</div>
+                                <div className="text-sm text-gray-600">Percentage discount</div>
+                                {newProgram.type === "percentage" && (
+                                  <div className="mt-2 flex items-center space-x-2">
+                                    <Input 
+                                      type="number" 
+                                      placeholder="5"
+                                      min="1"
+                                      max="100"
+                                      value={newProgram.cashBackPercent}
+                                      onChange={(e) => setNewProgram({ ...newProgram, cashBackPercent: Number(e.target.value) })}
+                                      className="w-24"
+                                    />
+                                    <span className="text-sm text-gray-600">%</span>
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+
+                          <div>
+                            <Label>Earn loyalty points</Label>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Input 
+                                type="number" 
+                                placeholder="10"
+                                min="1"
+                                value={newProgram.pointsPerDollar}
+                                onChange={(e) => setNewProgram({ ...newProgram, pointsPerDollar: Number(e.target.value) })}
+                                className="w-24"
+                              />
+                              <span className="text-sm text-gray-600">points for every $1 spent</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Constraints */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-medium text-gray-900">Constraints</h3>
+                          <p className="text-sm text-gray-600">How customers redeem rewards</p>
+                          
+                          <div className="space-y-3">
+                            <label className="flex items-center">
+                              <input 
+                                type="checkbox" 
+                                checked={newProgram.constraints.multipleRedemptions}
+                                onChange={(e) => setNewProgram({ 
+                                  ...newProgram, 
+                                  constraints: { ...newProgram.constraints, multipleRedemptions: e.target.checked }
+                                })}
+                                className="mr-2"
+                              />
+                              <span className="text-sm">Customer can redeem multiple times</span>
+                            </label>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="maxRedemptions">Max per customer</Label>
+                                <Input 
+                                  id="maxRedemptions"
+                                  type="number" 
+                                  placeholder="0"
+                                  min="0"
+                                  value={newProgram.constraints.maxRedemptionsPerCustomer}
+                                  onChange={(e) => setNewProgram({ 
+                                    ...newProgram, 
+                                    constraints: { ...newProgram.constraints, maxRedemptionsPerCustomer: Number(e.target.value) }
+                                  })}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="minPurchase">Min purchase</Label>
+                                <Input 
+                                  id="minPurchase"
+                                  type="number" 
+                                  placeholder="0"
+                                  min="0"
+                                  value={newProgram.minimumPurchase}
+                                  onChange={(e) => setNewProgram({ ...newProgram, minimumPurchase: Number(e.target.value) })}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Enrollment Period */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-medium text-gray-900">Enrollment</h3>
+                          <p className="text-sm text-gray-600">When customers to enroll their participation</p>
+                          
                           <div className="grid grid-cols-2 gap-4">
-                            <label className={`flex items-center p-4 border-2 rounded-lg cursor-pointer ${
-                              newProgram.type === "points" ? "border-primary bg-blue-50" : "border-gray-200 hover:border-primary"
-                            }`}>
-                              <input 
-                                type="radio" 
-                                name="programType" 
-                                value="points" 
-                                checked={newProgram.type === "points"}
-                                onChange={(e) => setNewProgram({ ...newProgram, type: e.target.value })}
-                                className="text-primary mr-3" 
+                            <div>
+                              <Label htmlFor="validFrom">Starts on</Label>
+                              <Input 
+                                id="validFrom"
+                                type="date"
+                                value={newProgram.constraints.validFrom}
+                                onChange={(e) => setNewProgram({ 
+                                  ...newProgram, 
+                                  constraints: { ...newProgram.constraints, validFrom: e.target.value }
+                                })}
                               />
-                              <div>
-                                <div className="font-medium text-gray-900">Points Based</div>
-                                <div className="text-sm text-gray-600">Earn and redeem points</div>
-                              </div>
-                            </label>
-                            <label className={`flex items-center p-4 border-2 rounded-lg cursor-pointer ${
-                              newProgram.type === "cash" ? "border-primary bg-blue-50" : "border-gray-200 hover:border-primary"
-                            }`}>
-                              <input 
-                                type="radio" 
-                                name="programType" 
-                                value="cash" 
-                                checked={newProgram.type === "cash"}
-                                onChange={(e) => setNewProgram({ ...newProgram, type: e.target.value })}
-                                className="text-primary mr-3" 
+                            </div>
+                            <div>
+                              <Label htmlFor="validTo">Ends on</Label>
+                              <Input 
+                                id="validTo"
+                                type="date"
+                                value={newProgram.constraints.validTo}
+                                onChange={(e) => setNewProgram({ 
+                                  ...newProgram, 
+                                  constraints: { ...newProgram.constraints, validTo: e.target.value }
+                                })}
                               />
-                              <div>
-                                <div className="font-medium text-gray-900">Cash Back</div>
-                                <div className="text-sm text-gray-600">Direct cash rewards</div>
-                              </div>
-                            </label>
+                            </div>
                           </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="programName">Program Name</Label>
-                          <Input 
-                            id="programName"
-                            type="text" 
-                            placeholder="e.g., StyleRewards Premium"
-                            value={newProgram.name}
-                            onChange={(e) => setNewProgram({ ...newProgram, name: e.target.value })}
-                            required
-                          />
-                        </div>
-
-                        {newProgram.type === "points" ? (
-                          <div>
-                            <Label htmlFor="pointsPerDollar">Points per Dollar</Label>
-                            <Input 
-                              id="pointsPerDollar"
-                              type="number" 
-                              placeholder="10"
-                              min="1"
-                              value={newProgram.pointsPerDollar}
-                              onChange={(e) => setNewProgram({ ...newProgram, pointsPerDollar: Number(e.target.value) })}
-                              required
-                            />
-                          </div>
-                        ) : (
-                          <div>
-                            <Label htmlFor="cashBackPercent">Cash Back Percentage</Label>
-                            <Input 
-                              id="cashBackPercent"
-                              type="number" 
-                              placeholder="5"
-                              min="0"
-                              max="100"
-                              step="0.1"
-                              value={newProgram.cashBackPercent}
-                              onChange={(e) => setNewProgram({ ...newProgram, cashBackPercent: Number(e.target.value) })}
-                              required
-                            />
-                          </div>
-                        )}
-
-                        <div>
-                          <Label htmlFor="minimumPurchase">Minimum Purchase</Label>
-                          <Input 
-                            id="minimumPurchase"
-                            type="number" 
-                            placeholder="0"
-                            min="0"
-                            step="0.01"
-                            value={newProgram.minimumPurchase}
-                            onChange={(e) => setNewProgram({ ...newProgram, minimumPurchase: Number(e.target.value) })}
-                            required
-                          />
                         </div>
 
                         <Button 
                           type="submit" 
-                          className="w-full"
                           disabled={createProgramMutation.isPending}
+                          className="w-full bg-primary hover:bg-primary/90"
                         >
                           {createProgramMutation.isPending ? "Creating..." : "Create Program"}
                         </Button>
