@@ -16,7 +16,7 @@ export default function LoyaltyModal({ isOpen, onClose }: LoyaltyModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: loyaltyData } = useQuery({
+  const { data: loyaltyData } = useQuery<any>({
     queryKey: ["/api/customer/loyalty"],
     enabled: isOpen,
   });

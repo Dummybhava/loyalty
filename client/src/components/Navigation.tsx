@@ -12,7 +12,7 @@ export default function Navigation({ onOpenLoyalty }: NavigationProps) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
-  const { data: loyaltyData } = useQuery({
+  const { data: loyaltyData } = useQuery<any>({
     queryKey: ["/api/customer/loyalty"],
     enabled: !!user,
   });
